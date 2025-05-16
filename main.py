@@ -5,6 +5,7 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 import pytz
+import json
 
 # Set page config
 st.set_page_config(
@@ -16,9 +17,13 @@ st.set_page_config(
 # Initialize Google Sheets connection
 def init_gsheets():
     try:
+        # Get credentials from Streamlit secrets
+        creds_dict = st.secrets["gcp_service_account"]
+        
+        # Create credentials object
         scope = ['https://spreadsheets.google.com/feeds',
                  'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('moodofthequeue-cb24cff6ac49.json', scope)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
         
         # Try to open the sheet to verify access
@@ -29,12 +34,6 @@ def init_gsheets():
             sheet.append_row(['timestamp', 'mood', 'note'])
             
         return client, sheet
-    except FileNotFoundError:
-        st.error("Credentials file 'moodofthequeue-cb24cff6ac49.json' not found!")
-        st.stop()
-    except gspread.exceptions.SpreadsheetNotFound:
-        st.error("Google Sheet 'Mood of the Queue' not found! Please create it and share with the service account.")
-        st.stop()
     except Exception as e:
         st.error(f"Error connecting to Google Sheets: {str(e)}")
         st.stop()
