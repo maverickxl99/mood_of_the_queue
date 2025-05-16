@@ -14,28 +14,33 @@ st.set_page_config(
     layout="centered"
 )
 
-# Initialize Google Sheets connection
 def init_gsheets():
     try:
-        # Get credentials from Streamlit secrets
-        creds_dict = st.secrets["gcp_service_account"]
-        
-        # Create credentials object
-        scope = ['https://spreadsheets.google.com/feeds',
-                 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        # 1) load from secrets
+        creds_dict = st.secrets["gcp_service_account"].copy()
+
+        # 2) replace literal “\n” escapes with real newlines
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+        # 3) build credentials+client
+        scope = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds  = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
         client = gspread.authorize(creds)
-        
-        # Try to open the sheet to verify access
-        sheet = client.open("Mood of the Queue").sheet1
-        
-        # Initialize headers if sheet is empty
+
+        # 4) open by key (put this in .streamlit/secrets.toml too)
+        sheet = client.open_by_key(st.secrets["sheet_key"]).sheet1
+
+        # 5) init header if empty
         if not sheet.get_all_values():
-            sheet.append_row(['timestamp', 'mood', 'note'])
-            
+            sheet.append_row(["timestamp", "mood", "note"])
+
         return client, sheet
+
     except Exception as e:
-        st.error(f"Error connecting to Google Sheets: {str(e)}")
+        st.error(f"Error connecting to Google Sheets: {e}")
         st.stop()
 
 # Initialize session state
